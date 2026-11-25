@@ -1,0 +1,28 @@
+name: Publish ReadyClip site
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: github-pages
+    steps:
+      - uses: actions/checkout@v4
+      - name: Link the verified beta asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          asset=ReadyClip-0.5.1-beta-x64.msi
+          url=$(gh release view v0.5.1-beta --json assets --jq ".assets[] | select(.name == \"$asset\") | .url")
+          test -n "$url"
+          sed -i "s|href=\"$asset\"|href=\"$url\"|" dist/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - uses: actions/deploy-pages@v4
