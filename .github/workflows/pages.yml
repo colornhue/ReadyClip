@@ -13,12 +13,20 @@ jobs:
     environment: github-pages
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Link the verified beta asset
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           asset=ReadyClip-0.5.1-beta-x64.msi
           url=$(gh release view v0.5.1-beta --json assets --jq ".assets[] | select(.name == \"$asset\") | .url")
+          next_asset=ReadyClip-0.5.2-beta-x64.msi
+          if next_url=$(gh release view v0.5.2-beta --json assets --jq ".assets[] | select(.name == \"$next_asset\") | .url") && [ -n "$next_url" ]; then
+            url="$next_url"
+            sed -i 's/0\.5\.1/0.5.2/g; s/46F5B7C6E3C14EC5A89E75BC5939EAA3A5760D88DBDEC471AADB4671AC7DC3A6/575701824C653FA17507B426B479CD8E14846FC838DC7F0365791FD97D9AB9A1/' dist/index.html
+            asset="$next_asset"
+          fi
           test -n "$url"
           sed -i "s|href=\"$asset\"|href=\"$url\"|" dist/index.html
       - uses: actions/configure-pages@v5
