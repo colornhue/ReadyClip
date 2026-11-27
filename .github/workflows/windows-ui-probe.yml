@@ -1,0 +1,67 @@
+name: Windows import and responsive UI
+on:
+  push:
+    branches: [qa/desktop-0.5.3-parity]
+    paths: ['.github/workflows/windows-ui-probe.yml']
+permissions:
+  contents: read
+jobs:
+  ui:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - shell: pwsh
+        name: Exercise the published app
+        run: |
+          $ErrorActionPreference = 'Stop'
+          curl.exe -fsSL --retry 3 -o ReadyClip.zip https://github.com/colornhue/ReadyClip/releases/download/v0.5.3-beta/ReadyClip-0.5.3-beta-Windows-x64.zip
+          if ((Get-FileHash ReadyClip.zip).Hash -ne '547dbc6f8f2afb30706282058672d7cbf71c4dffacff49810bf6c921b215695c') { throw 'Unexpected release digest' }
+          tar -xf ReadyClip.zip
+          python -m pip install --quiet playwright pywinauto
+          @'
+          import os
+          import pathlib
+          import subprocess
+          import time
+          import urllib.request
+          
+          from playwright.sync_api import sync_playwright
+          from pywinauto import Desktop
+          
+          root = pathlib.Path("App").resolve()
+          fixture = pathlib.Path("qa-ride.mp4").resolve()
+          subprocess.run([str(root / "_internal/ffmpeg.exe"), "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x96:rate=24", "-f", "lavfi", "-i", "aevalsrc=exprs='if(between(t,2,4.2),0.45*(1+0.5*sin(7*t))*sin(2*PI*(110*t+30*t*t)),0.003*sin(2*PI*120*t))':s=48000:d=6", "-t", "6", "-c:v", "libx264", "-c:a", "aac", str(fixture)], check=True)
+          env = dict(os.environ, QTWEBENGINE_REMOTE_DEBUGGING="127.0.0.1:9223", QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu")
+          proc = subprocess.Popen([str(root / "ReadyClip.exe")], cwd=root, env=env)
+          try:
+              for attempt in range(100):
+                  try:
+                      urllib.request.urlopen("http://127.0.0.1:9223/json/version", timeout=1).close()
+                      break
+                  except OSError:
+                      time.sleep(0.5)
+              with sync_playwright() as driver:
+                  browser = driver.chromium.connect_over_cdp("http://127.0.0.1:9223")
+                  page = browser.contexts[0].pages[0]
+                  page.locator('[data-do="add"]').wait_for(timeout=60000)
+                  session = page.context.new_cdp_session(page)
+                  for width in (320, 390, 799, 800, 1024, 1920):
+                      session.send("Emulation.setDeviceMetricsOverride", {"width": width, "height": 850, "deviceScaleFactor": 1, "mobile": False})
+                      page.wait_for_timeout(120)
+                      assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), width
+                  session.send("Emulation.clearDeviceMetricsOverride")
+                  page.locator('[data-do="add"]').click()
+                  page.locator('[data-do="files"]').click(no_wait_after=True)
+                  dialog = Desktop(backend="win32").window(title="Add footage", class_name="#32770")
+                  dialog.wait("visible",timeout=30)
+                  dialog.child_window(class_name="Edit",found_index=0).set_edit_text(str(fixture))
+                  dialog.child_window(control_id=1,class_name="Button").click()
+                  page.get_by_text(fixture.name,exact=True).first.wait_for(timeout=45000)
+                  page.evaluate("api.analyze(3,0,0)")
+                  page.locator("#shots .shot-row").first.wait_for(timeout=60000)
+                  print("Passed six Windows viewport widths, native file picker, import, thumbnail and highlight review")
+          finally:
+              proc.terminate()
+          
+          '@ | Set-Content -Encoding utf8 ui_probe.py
+          python ui_probe.py
