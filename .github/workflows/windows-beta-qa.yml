@@ -1,0 +1,41 @@
+name: Published Windows desktop beta QA
+on:
+  push:
+    branches: [qa/desktop-0.5.3-parity]
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - name: Verify published package and launch its native window
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $url = 'https://github.com/colornhue/ReadyClip/releases/download/v0.5.3-beta/ReadyClip-0.5.3-beta-Windows-x64.zip'
+          curl.exe -fsSL --retry 3 -o ReadyClip.zip $url
+          if ((Get-FileHash ReadyClip.zip).Hash -ne '547dbc6f8f2afb30706282058672d7cbf71c4dffacff49810bf6c921b215695c') { throw 'Unexpected beta digest' }
+          tar -xf ReadyClip.zip
+          if ($LASTEXITCODE) { throw 'Package extraction failed' }
+          $ff = Resolve-Path App/_internal/ffmpeg.exe
+          $probe = Resolve-Path App/_internal/ffprobe.exe
+          & $ff -v error -f lavfi -i testsrc2=size=160x96:rate=24 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 2 -c:v libx264 -c:a aac ride.mp4
+          if ($LASTEXITCODE) { throw 'Packaged encoder failed' }
+          $frames = & $probe -v error -select_streams v:0 -show_entries stream=nb_frames -of csv=p=0 ride.mp4
+          if ($frames -ne '48') { throw "Unexpected frame count $frames" }
+          $env:QTWEBENGINE_CHROMIUM_FLAGS = '--disable-gpu'
+          $p = Start-Process (Resolve-Path App/ReadyClip.exe) -WorkingDirectory (Resolve-Path App) -PassThru
+          try {
+            $deadline = (Get-Date).AddSeconds(90)
+            do {
+              Start-Sleep -Milliseconds 500
+              $p.Refresh()
+              if ($p.HasExited) { throw "ReadyClip exited during launch with code $($p.ExitCode)" }
+            } until ($p.MainWindowHandle -ne 0 -or (Get-Date) -gt $deadline)
+            if ($p.MainWindowHandle -eq 0 -or !$p.Responding -or $p.MainWindowTitle -notmatch 'ReadyClip') { throw "No responsive ReadyClip window: $($p.MainWindowTitle)" }
+            Write-Host "Passed Windows native launch: $($p.MainWindowTitle), 48-frame fixture encoded and probed with bundled tools."
+          } finally {
+            if (!$p.HasExited) { $p.CloseMainWindow() | Out-Null; if (!$p.WaitForExit(8000)) { $p.Kill() } }
+          }
