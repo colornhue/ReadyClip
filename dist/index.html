@@ -1,20 +1,106 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0e1013"><title>ReadyClip — Ride highlights for Windows</title><style>
-*{box-sizing:border-box}body{margin:0;background:#0e1013;color:#eff5fc;font:17px/1.55 "Segoe UI",sans-serif}main,header,footer{max-width:1160px;margin:auto;padding:22px 5vw}header,footer{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #344454}header strong{font:italic 900 28px Arial;letter-spacing:-1px}header strong{display:inline-flex;align-items:center;gap:9px}.platforms{font-size:15px;margin:16px 0 0}a{color:inherit}header a{font-size:15px}.hero{display:grid;grid-template-columns:1.2fr 1fr;gap:7%;align-items:center;padding:48px 0}.hero h1{font:italic 900 clamp(54px,7vw,98px)/.95 Arial;letter-spacing:-.06em;margin:0 0 25px}.hero p{max-width:455px;color:#c7d5e2}.cta{display:inline-block;background:#618eff;color:#0e1013;border-radius:7px;padding:13px 23px;font-weight:700;text-decoration:none;margin:12px 0 5px}small,figcaption{display:block;color:#b8c7d6;font-size:14px}figure{margin:0}video{background:#040a10;border-radius:10px;width:100%;height:440px;display:block;object-fit:contain;border:1px solid #344454}figcaption{margin-top:8px}section+section{border-top:1px solid #344454;padding:22px 0 44px}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}.steps p{color:#bdcddd}.steps h3{margin-bottom:0}footer{border-top:1px solid #344454;font-size:14px;color:#b8c7d6}code{overflow-wrap:anywhere}details{margin:16px 0}summary{cursor:pointer}@media(max-width:700px){.hero,.steps{grid-template-columns:1fr}.hero{gap:28px}.steps{gap:0}video{height:360px}}
-.hero > div { container-type: inline-size; }
-.hero h1 { font-size: clamp(30px, 12.5cqi, 70px); line-height: 1; text-wrap: balance; }
-.hero h1 span { display: block; margin-top: .08em; color: #82a6ff; }
-</style></head><body><header><strong><svg xmlns="http://www.w3.org/2000/svg" viewBox="40 238 790 444" width="44" height="25" aria-hidden="true">
-  <path fill="#ffffff" d="M134 252H354Q434 252 465 312Q527 245 625 246C724 246 789 300 822 387H707C682 356 651 343 614 343C554 343 511 375 483 434C457 486 416 505 359 506L483 664H350L242 531Q226 508 210 508L155 664H47L124 421H328Q367 421 373 389Q378 344 337 344H99Z"/>
-  <path fill="#ffffff" d="M474 481Q486 573 579 573Q654 576 694 517H819C782 619 704 674 593 674Q492 673 448 607Q412 540 474 481Z"/>
-  <path fill="#618eff" d="M180 358H204L173 406H148ZM221 358H245L214 406H189ZM262 358H286L255 406H230ZM545 395Q545 383 556 389L670 455Q681 462 670 469L556 535Q545 542 545 530Z"/>
-</svg> READYCLIP</strong><a href="#workflow">How it works</a></header><main><section class="hero"><div><h1>More time riding.<span>Less time editing.</span></h1><p>Turn a full ride into a highlight reel without scrubbing through every clip. ReadyClip finds loud moments in your action-camera footage, keeps the approach and what happens next, and joins the clips into one MP4. Everything runs on your Windows PC.</p><a class="cta" href="ReadyClip-0.5.1-beta-x64.msi" download>Download for Windows</a><small>Windows x64 · Beta 0.5.1 · 232 MB · Unsigned MSI</small><p class="platforms">Coming soon to macOS, iOS, iPadOS, and Android.</p></div><figure><video controls playsinline preload="metadata" poster="trail.jpg" aria-label="Six seconds of exported trail footage"><source src="ride.mp4" type="video/mp4"></video><figcaption>Trail footage from a ReadyClip export · 6 seconds</figcaption></figure></section><section id="workflow"><h2>From camera card to highlight reel</h2><div class="steps"><div><h3>Choose your footage</h3><p>Add individual clips or a whole folder. Your originals stay on your drive.</p></div><div><h3>Dial in the cut</h3><p>Adjust audio sensitivity and choose how many seconds to keep before and after each event.</p></div><div><h3>Export your reel</h3><p>Save a lossless video master or use automatic encoding. Create optional four-minute parts for sharing.</p></div></div><details><summary>Verify the beta download</summary><p>Run <code>Get-FileHash .\ReadyClip-0.5.1-beta-x64.msi</code> in PowerShell and compare the SHA-256 value.</p><code>46F5B7C6E3C14EC5A89E75BC5939EAA3A5760D88DBDEC471AADB4671AC7DC3A6</code></details></section><section id="features">
-  <h2>Get the cut you want</h2>
-  <div class="steps">
-    <div><h3>See what ReadyClip picked</h3><p>Review the detected ranges on the audio waveform and see a preview from the actual rendered footage as your reel comes together.</p></div>
-    <div><h3>Give the ride a look</h3><p>Keep the original color or choose Trail Natural, Cinematic, or Punchy. Add light frame blending when you want a softer sense of motion.</p></div>
-    <div><h3>Choose quality or speed</h3><p>Preserve the processed frames with a lossless video master, or use automatic encoding with NVIDIA NVENC, AMD AMF, or Intel Quick Sync when available. CPU encoding is available as a fallback.</p></div>
-    <div><h3>Share the ride in parts</h3><p>Export the full reel plus optional four-minute parts without compressing the video again. Open the finished MP4’s location straight from the export dialog.</p></div>
-    <div><h3>Know how the render is going</h3><p>See which reel and shot are rendering. In the 0.5.3 Windows beta, a knobby dirt-bike wheel follows the progress bar in your selected theme.</p></div>
-    <div><h3>Make it yours</h3><p>Switch between Racing Blue, Alpine Cyan, Factory Orange, and Stealth.</p></div>
-  </div>
-</section></main><footer>ReadyClip<span>Windows desktop beta</span></footer></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f3eb">
+  <meta name="description" content="Turn a full action-camera ride into a highlight reel. Find the moments, choose your cuts, and export an MP4 on your own computer.">
+  <meta property="og:title" content="ReadyClip — Keep that part.">
+  <meta property="og:description" content="From a full camera roll to the cut you want to ride again.">
+  <meta property="og:image" content="https://colornhue.github.io/ReadyClip/media/hero-desktop.webp">
+  <title>ReadyClip — Keep that part.</title>
+  <link rel="icon" type="image/svg+xml" href="mark.svg">
+  <link rel="preload" href="media/roboto-variable.woff" as="font" type="font/woff" crossorigin>
+  <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="windows" viewBox="0 0 24 24"><path fill="currentColor" d="M2 3h9v8H2zm11 0h9v8h-9zM2 13h9v8H2zm11 0h9v8h-9z"/></symbol>
+    <symbol id="play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></symbol>
+    <symbol id="cross" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" fill="none"/></symbol>
+  </defs></svg>
+  <header class="mast">
+    <div class="wrap mast-inner">
+      <a class="brand" href="#main" aria-label="ReadyClip home"><img src="media/logo-ink.png" width="480" height="71" alt="ReadyClip"></a>
+      <nav aria-label="Main navigation"><a href="#the-cut">The cut</a><a href="#workflow">Workflow</a><a href="#skins">Skins</a></nav>
+      <details class="mobile-menu"><summary>Menu</summary><nav aria-label="Mobile navigation"><a href="#the-cut">The cut</a><a href="#workflow">Workflow</a><a href="#skins">Skins</a></nav></details>
+      <a class="button top-button" href="#download">Get ReadyClip</a>
+    </div>
+  </header>
+  <main id="main">
+    <div class="hero wrap">
+      <div class="hero-copy">
+        <p class="kicker"><span class="slashes" aria-hidden="true"></span>Action-camera highlights</p>
+        <h1>Keep <br>that part<span>.</span></h1>
+        <p class="intro">Turn the whole ride into the moments you want to watch again. ReadyClip finds the hits in your camera footage. You decide what makes the reel.</p>
+        <a class="button download-link" href="https://github.com/colornhue/ReadyClip/releases/download/v0.5.3-beta/ReadyClip-0.5.3-beta-Windows-x64.zip"><svg aria-hidden="true"><use href="#windows"/></svg>Download for Windows</a>
+      </div>
+      <figure class="hero-photo">
+        <picture><source media="(max-width: 700px)" srcset="media/hero-mobile.webp"><img src="media/hero-desktop.webp" width="1122" height="700" alt="A blue dirt bike at sunset beside the truck. An action camera and phone sit on the dusty tailgate in this staged campaign scene." fetchpriority="high"></picture>
+        <a class="film-trigger" href="media/flagship.mp4" data-film data-title="Keep that part." data-poster="media/flagship-poster.webp"><span class="play-circle"><svg aria-hidden="true"><use href="#play"/></svg></span><span>Play the film<small>0:15</small></span></a>
+      </figure>
+    </div>
+
+    <section id="the-cut" class="proof" aria-labelledby="cut-heading">
+      <div class="wrap proof-inner">
+        <div class="proof-numbers">
+          <h2 class="kicker" id="cut-heading">One ride. One real scan.</h2>
+          <div class="readout"><div><strong>31:04</strong><span>On the camera</span></div><i class="range-mark" aria-hidden="true"></i><div><strong>10.3<span>s</span></strong><span>In the cut</span></div></div>
+        </div>
+        <div class="proof-trace">
+          <img src="ride-wave.svg" width="560" height="70" alt="Audio waveform from the full ride with the selected moment marked near 18 minutes, 35 seconds.">
+          <div class="trace-caption"><span>DJI Osmo Nano <b> / </b> 18:35.464</span><a href="media/selection.mp4" data-film data-title="ReadyClip’s 10.3-second selection" data-poster="media/selection-poster.webp"><svg aria-hidden="true"><use href="#play"/></svg>Play the cut</a></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" class="workflow wrap" aria-labelledby="flow-heading">
+      <p class="kicker"><span class="slashes" aria-hidden="true"></span>How it works</p>
+      <h2 class="display" id="flow-heading">From camera roll to reel.</h2>
+      <div class="steps">
+        <article><img src="media/field-laptop.webp" width="1080" height="720" loading="lazy" alt="The ReadyClip desktop import screen on a laptop at a trailhead."><h3>Drop the footage.</h3><p>Add a file or a folder from your camera card. Your originals stay on your drive.</p></article>
+        <article><img src="media/field-phone.webp" width="720" height="990" loading="lazy" alt="ReadyClip’s highlight review screen on a phone beside the bike."><h3>Find the hit.</h3><p>ReadyClip listens for changes in the ride audio. Review its picks and dial in how much to keep before and after each moment.</p></article>
+        <article><img src="media/ride.webp" width="900" height="960" loading="lazy" alt="A frame from the rider’s DJI camera looking across a high-desert trail."><h3>Take the reel.</h3><p>Export one MP4 or split the ride into shorter parts. Keep a lossless master when you want the original detail.</p></article>
+      </div>
+    </section>
+
+    <section id="skins" class="skin-section" aria-labelledby="skins-heading">
+      <div class="wrap skin-layout">
+        <div class="skin-copy">
+          <p class="kicker"><span class="slashes" aria-hidden="true"></span>App skins</p>
+          <h2 id="skins-heading" class="display">Pick your <br>colors.</h2>
+          <p>Four finishes from the desktop app. Pick one to see the actual interface.</p>
+          <fieldset class="swatches"><legend class="sr">Preview an app skin</legend>
+            <label><input type="radio" name="skin" value="racing" checked><i class="blue"></i><span>Racing Blue</span></label>
+            <label><input type="radio" name="skin" value="alpine"><i class="cyan"></i><span>Alpine Cyan</span></label>
+            <label><input type="radio" name="skin" value="factory"><i class="orange"></i><span>Factory Orange</span></label>
+            <label><input type="radio" name="skin" value="stealth"><i class="steel"></i><span>Stealth</span></label>
+          </fieldset>
+          <noscript><p>The desktop preview shows Racing Blue.</p></noscript>
+        </div>
+        <figure class="app-frame">
+          <img id="skin-image" src="media/skin-racing.webp" width="1300" height="680" loading="lazy" alt="ReadyClip desktop import and reel settings in Racing Blue.">
+          <figcaption><span>ReadyClip Desktop</span><span id="active-skin" aria-live="polite">Racing Blue</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="download" class="download wrap" aria-labelledby="download-heading">
+      <div><p class="kicker"><span class="slashes" aria-hidden="true"></span>Windows desktop</p><h2 class="display" id="download-heading">Ride it back.</h2><p>Get ReadyClip for Windows x64. Unzip the download and open <strong>App/ReadyClip.exe</strong>.</p>
+      <a class="button download-link" href="https://github.com/colornhue/ReadyClip/releases/download/v0.5.3-beta/ReadyClip-0.5.3-beta-Windows-x64.zip"><svg aria-hidden="true"><use href="#windows"/></svg>Download for Windows</a>
+      <span class="file-meta">Portable ZIP · 420 MB</span></div>
+      <div class="release"><h3>Build details</h3><p>Windows 0.5.3 beta. macOS, iPhone, iPad and Android versions are in development.</p>
+        <details><summary>Verify the download</summary><p>In PowerShell, run <code>Get-FileHash .\ReadyClip-0.5.3-beta-Windows-x64.zip</code> and compare its SHA-256 value.</p><code class="hash">547dbc6f8f2afb30706282058672d7cbf71c4dffacff49810bf6c921b215695c</code></details>
+        <a href="https://github.com/colornhue/ReadyClip/releases">Release notes</a>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap footer-inner"><a class="brand" href="#main" aria-label="ReadyClip home"><img src="media/logo-ink.png" width="480" height="71" alt="ReadyClip"></a><a href="#main">Back to top</a></div></footer>
+  <dialog id="player" aria-labelledby="player-heading">
+    <div class="player-header"><h2 id="player-heading">Keep that part.</h2><button id="close-player" type="button" aria-label="Close video"><svg aria-hidden="true"><use href="#cross"/></svg></button></div>
+    <video playsinline controls preload="none" aria-label="ReadyClip film"></video>
+  </dialog>
+</body>
+</html>
