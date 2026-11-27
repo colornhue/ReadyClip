@@ -1,4 +1,4 @@
-# ReadyClip
+# <img src="docs/brand/readyclip-mark.png" alt="" width="65" height="39" align="center"> ReadyClip
 
 ReadyClip turns action-camera footage into highlight reels on your Windows PC. It detects audio peaks, keeps the footage around each moment, and joins the selected sections into an MP4.
 
