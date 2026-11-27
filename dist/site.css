@@ -155,3 +155,11 @@ dialog video { display:block; background:#111; width:min(24rem,calc(100vw - 3.5r
   .trace-caption { flex-wrap:wrap }
 }
 @media(prefers-reduced-motion:reduce) { *, *::before, *::after { scroll-behavior:auto!important; transition:none!important } }
+
+.availability, .store-badges { display:flex; flex-wrap:wrap; gap:.65rem 1rem; list-style:none; padding:0; margin:1rem 0 }
+.availability li, .store-badges li { display:flex; align-items:center; gap:.45rem; font-size:.875rem; font-weight:650 }
+.availability svg { width:1.15rem; height:1.15rem; flex:none }
+.availability li:first-child svg { color:#1674c9 }
+.store-badges li { background:var(--ink); color:#fff; border-radius:.38rem; padding:.45rem .78rem; min-height:3rem; line-height:1.1 }
+.store-badges svg { width:1.5rem; height:1.5rem; flex:none }
+.store-badges small { display:block; font-size:.72rem; font-weight:500; margin-bottom:.17rem }
