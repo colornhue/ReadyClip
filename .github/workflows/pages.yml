@@ -55,3 +55,40 @@ jobs:
     steps:
       - uses: actions/deploy-pages@v4
         id: deployment
+
+  verify-domain:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 3
+    steps:
+      - name: Verify the public ReadyClip HTTPS endpoint
+        shell: bash
+        run: |
+          set -uo pipefail
+          host=readyclip.studio
+          page=$(mktemp)
+          status=0
+          if ! curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --retry 2 --max-time 15 "https://$host/" --output "$page" --write-out 'HTTPS %{http_code} %{url_effective}\n'; then
+            status=1
+          elif ! grep -Fq '<title>ReadyClip' "$page"; then
+            echo 'HTTPS returned a different page.'
+            status=1
+          fi
+          redirect=$(curl --silent --show-error --max-time 12 --output /dev/null --write-out '%{http_code} %{redirect_url}' "http://$host/") || status=1
+          echo "HTTP response: $redirect"
+          case "$redirect" in
+            "301 https://$host/"|"302 https://$host/"|"307 https://$host/"|"308 https://$host/") ;;
+            *) status=1 ;;
+          esac
+          if [[ $status != 0 ]]; then
+            for kind in A AAAA CAA NS; do
+              echo "$host $kind"
+              dig +time=3 +tries=1 +noall +answer "$host" "$kind"
+            done
+            echo 'WWW records'
+            dig +time=3 +tries=1 +noall +answer "www.$host" A
+            echo 'Served certificate'
+            timeout 10 openssl s_client -connect "$host:443" -servername "$host" </dev/null 2>/dev/null | openssl x509 -noout -issuer -dates -ext subjectAltName || true
+          fi
+          exit "$status"

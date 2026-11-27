@@ -45,7 +45,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible, .swatches label:ha
 .slashes { display: inline-block; width: 1.65rem; height: .8rem; transform: skewX(-25deg); background: repeating-linear-gradient(90deg,var(--blue) 0 4px,transparent 4px 8px) }
 h1, .display, .steps h3, .readout strong, .player-header h2 { font-weight: 900; font-stretch: 75%; font-variation-settings: "wght" 900, "wdth" 75, "ital" 1; letter-spacing: -.052em; line-height: .92 }
 h1 { font-size: clamp(4.9rem, 8.7vw, 9.6rem); margin: clamp(1.4rem,2.1vw,2.3rem) 0 1.3rem; }
-h1 span { color: var(--blue) }
+h1 span { display:block; color:#527cde }
 .intro { max-width: 34ch; color: var(--muted); font-size: clamp(1.02rem, 1.4vw, 1.28rem); line-height: 1.48 }
 .download-link { margin-top: 1.55rem }
 .hero-photo { min-height: clamp(29.5rem, 39vw, 39rem); isolation: isolate; position: relative; overflow: hidden; background: #c5b297 }
@@ -130,7 +130,6 @@ dialog video { display:block; background:#111; width:min(24rem,calc(100vw - 3.5r
   .hero { grid-template-columns:1fr; gap:1.7rem; padding-top:2.05rem; padding-bottom:1.3rem }
   .hero-copy { padding:0 }
   h1 { font-size:clamp(4.1rem,14.2vw,6.25rem); margin:.85rem 0 .9rem; line-height:.94 }
-  h1 br { display:none } h1 br::after { content:" " }
   .intro { max-width:42ch }
   .download-link { margin-top:1.05rem }
   .hero-photo { min-height:0; aspect-ratio:1.27 }
