@@ -92,7 +92,10 @@ jobs:
                   dialog.wait("visible",timeout=30)
                   return dialog
               dialog = open_picker()
-              dialog.child_window(control_id=2, class_name="Button").click()
+              dialog.child_window(class_name="ComboBoxEx32",found_index=0).wait("ready",timeout=15)
+              # Use the native dialog's title-bar close path, which returns
+              # cancellation without depending on a focused input desktop.
+              win32gui.PostMessage(dialog.handle, 0x0010, 0, 0)
               dialog.wait_not("visible", timeout=25)
               wait("page === 'import' && !busy && files.length === 0")
               print("PASS native file picker cancel, empty editor retained",flush=True)
