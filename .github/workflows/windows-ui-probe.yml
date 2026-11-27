@@ -1,4 +1,4 @@
-name: Windows import and responsive UI
+name: Windows native reel and preview QA
 on:
   push:
     branches: [qa/desktop-0.5.3-parity]
@@ -8,7 +8,7 @@ permissions:
 jobs:
   ui:
     runs-on: windows-2022
-    timeout-minutes: 10
+    timeout-minutes: 16
     steps:
       - shell: pwsh
         name: Exercise the published app
@@ -17,7 +17,7 @@ jobs:
           curl.exe -fsSL --retry 3 -o ReadyClip.zip https://github.com/colornhue/ReadyClip/releases/download/v0.5.3-beta/ReadyClip-0.5.3-beta-Windows-x64.zip
           if ((Get-FileHash ReadyClip.zip).Hash -ne '547dbc6f8f2afb30706282058672d7cbf71c4dffacff49810bf6c921b215695c') { throw 'Unexpected release digest' }
           tar -xf ReadyClip.zip
-          python -m pip install --quiet websocket-client pywinauto
+          python -m pip install --quiet websocket-client pywinauto pillow
           @'
           import os
           import pathlib
@@ -28,10 +28,21 @@ jobs:
           import json
           import websocket
           from pywinauto import Desktop
+          from PIL import ImageChops, ImageGrab, ImageStat
+          import win32gui
           
           root = pathlib.Path("App").resolve()
           fixture = pathlib.Path("qa-ride.mp4").resolve()
-          subprocess.run([str(root / "_internal/ffmpeg.exe"), "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x96:rate=24", "-f", "lavfi", "-i", "aevalsrc=exprs='if(between(t,2,4.2),0.45*(1+0.5*sin(7*t))*sin(2*PI*(110*t+30*t*t)),0.003*sin(2*PI*120*t))':s=48000:d=6", "-t", "6", "-c:v", "libx264", "-c:a", "aac", str(fixture)], check=True)
+          ff = str(root / "_internal/ffmpeg.exe")
+          probe = str(root / "_internal/ffprobe.exe")
+          # Audio cadence repeats every 14 seconds. Three fixed color patches identify the
+          # chronological source sections even after the rendered cuts are reordered.
+          audio = "if(between(mod(t,14),2,4.2),0.45*(1+0.5*sin(7*mod(t,14)))*sin(2*PI*(110*mod(t,14)+30*mod(t,14)*mod(t,14))),0.003*sin(2*PI*120*t))"
+          markers = ",".join(f"drawbox=x=0:y=0:w=32:h=32:c={color}:t=fill:enable='{times}'"
+                             for color, times in [("red", "lt(t,12)"), ("lime", "between(t,12,26)"), ("blue", "gte(t,26)")])
+          subprocess.run([ff, "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x96:rate=24",
+                          "-f", "lavfi", "-i", f"aevalsrc=exprs='{audio}':s=48000:d=39", "-t", "39",
+                          "-vf", markers, "-c:v", "libx264", "-c:a", "aac", str(fixture)], check=True)
           env = dict(os.environ, QTWEBENGINE_REMOTE_DEBUGGING="127.0.0.1:9223", QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu")
           proc = subprocess.Popen([str(root / "ReadyClip.exe")], cwd=root, env=env)
           try:
@@ -72,10 +83,20 @@ jobs:
                   assert js("document.documentElement.scrollWidth <= innerWidth"), width
               send("Emulation.clearDeviceMetricsOverride", {})
               print("All six viewport checks passed",flush=True)
-              js("document.querySelector('[data-do=add]').click()")
-              js("setTimeout(()=>document.querySelector('[data-do=files]').click(),0)")
-              dialog = Desktop(backend="win32").window(title="Add footage", class_name="#32770")
-              dialog.wait("visible",timeout=30)
+              def click(action):
+                  js(f"document.querySelector('[data-do={action}]').click()")
+              def open_picker():
+                  click("add")
+                  js("setTimeout(()=>document.querySelector('[data-do=files]').click(),0)")
+                  dialog = Desktop(backend="win32").window(title="Add footage", class_name="#32770")
+                  dialog.wait("visible",timeout=30)
+                  return dialog
+              dialog = open_picker()
+              dialog.child_window(control_id=2, class_name="Button").click()
+              dialog.wait_not("visible", timeout=25)
+              wait("page === 'import' && !busy && files.length === 0")
+              print("PASS native file picker cancel, empty editor retained",flush=True)
+              dialog = open_picker()
               combo = dialog.child_window(class_name="ComboBoxEx32",found_index=0)
               name_edit = combo.child_window(class_name="Edit",found_index=0)
               name_edit.set_edit_text(str(fixture))
@@ -88,24 +109,111 @@ jobs:
               wait("!!document.querySelector('[data-do=next]:enabled') && !busy")
               js("document.querySelector('[data-do=next]').click()")
               wait("!!document.querySelector('#shots .shot-row')")
-              print("Passed six Windows viewport widths, native file picker, import and highlight review")
               wait("page === 'review' && !busy")
-              js("document.querySelector('[data-do=next]').click()")
-              wait("page === 'enhance' && !!document.querySelector('[data-do=next]:enabled')")
-              js("setTimeout(()=>document.querySelector('[data-do=next]').click(),0)")
-              folder = Desktop(backend="win32").window(title="Save reels to a folder",class_name="#32770")
-              folder.wait("visible",timeout=30)
-              folder.child_window(control_id=1,class_name="Button").click()
-              folder.wait_not("visible",timeout=30)
-              wait("page === 'done' && outputs.length > 0")
-              result = pathlib.Path(js("outputs[0]"))
-              assert result.is_file()
-              streams = json.loads(subprocess.check_output([str(root/"_internal/ffprobe.exe"),"-v","error","-show_streams","-of","json",str(result)]))["streams"]
-              assert {"video","audio"}.issubset({s["codec_type"] for s in streams}), streams
-              subprocess.run([str(root/"_internal/ffmpeg.exe"),"-v","error","-xerror","-i",str(result),"-f","null","-"],check=True)
-              print("Passed Windows reel export and full video/audio decode.",flush=True)
+              def shots():
+                  return js("selected().map(({start,end})=>[start,end])")
+              ordered = shots()
+              assert len(ordered) == 3 and all(a[1] <= b[0] for a,b in zip(ordered,ordered[1:])), ordered
+              print("PASS chronological review cuts", ordered, flush=True)
+              click("next")
+              wait("page === 'enhance' && !busy")
+          
+              def export_and_check(label, plan):
+                  js(f"(() => {{const e=document.getElementById('reelName');e.value='{label}';e.dispatchEvent(new Event('input',{{bubbles:true}}));}})()")
+                  js("setTimeout(()=>document.querySelector('[data-do=next]').click(),0)")
+                  folder=Desktop(backend="win32").window(title="Save reels to a folder",class_name="#32770")
+                  folder.wait("visible",timeout=30)
+                  folder.child_window(control_id=1,class_name="Button").click()
+                  folder.wait_not("visible",timeout=30)
+                  wait("page === 'done' && outputs.length > 0")
+                  output=pathlib.Path(js("outputs[0]"))
+                  assert output.is_file()
+                  streams=json.loads(subprocess.check_output([probe,"-v","error","-show_streams","-of","json",str(output)]))["streams"]
+                  assert {"video","audio"}.issubset({s["codec_type"] for s in streams}), streams
+                  subprocess.run([ff,"-v","error","-xerror","-i",str(output),"-f","null","-"],check=True)
+                  elapsed=0
+                  observed=[]
+                  expected=[]
+                  for start,end in plan:
+                      duration=end-start
+                      position=(start+end)/2
+                      expected.append(0 if position<12 else 1 if position<26 else 2)
+                      rgb=subprocess.check_output([ff,"-v","error","-ss",str(elapsed+duration/2),"-i",str(output),
+                          "-vf","crop=12:12:6:6,scale=1:1","-frames:v","1","-f","rawvideo","-pix_fmt","rgb24","-"])
+                      assert len(rgb)==3 and max(rgb)-min(rgb)>55, (label,rgb)
+                      observed.append(rgb.index(max(rgb)))
+                      elapsed+=duration
+                  assert observed==expected,(label,expected,observed)
+                  print("PASS",label,"fully decoded, section colors",observed,flush=True)
+          
+              export_and_check("qa-chronological",ordered)
+              click("back")
+              click("back")
+              click("back")
+              wait("page === 'import' && files.length === 1")
+              click("random")
+              click("next")
+              wait("page === 'enhance' && random && !busy")
+              def starts(plan):
+                  return [round(start,2) for start,end in plan]
+              for attempt in range(13):
+                  shuffled=shots()
+                  assert len(shuffled)==3 and sorted(starts(shuffled))==starts(ordered),shuffled
+                  if attempt and starts(shuffled)!=starts(ordered):
+                      break
+                  click("shuffle")
+              else:
+                  raise AssertionError("Twelve shuffles yielded only chronological order")
+              print("PASS random selection and shuffle",shuffled,flush=True)
+              export_and_check("qa-shuffled",shuffled)
+              click("back")
+              wait("page === 'enhance' && !busy")
+              # Select one shot without auto-play, seek into its moving picture, and compare
+              # the native window pixels at fixed source time for each live effect.
+              click("enhanceCut")
+              wait("activeVideo && durationMs > 0")
+              js("const seekControl=document.querySelector('#seek');seekControl.value=1800;seekControl.dispatchEvent(new Event('change',{bubbles:true}))")
+              wait("!running && Math.abs(positionMs-1800)<150")
+              window=Desktop(backend="win32").window(process=proc.pid,title_re=".*ReadyClip.*",visible_only=True).wrapper_object()
+              def frame():
+                  coords=js("(()=>{const r=document.querySelector('#stage').getBoundingClientRect();return [r.left+r.width*.25,r.top+r.height*.28,r.left+r.width*.75,r.top+r.height*.72,devicePixelRatio]})()")
+                  origin=win32gui.ClientToScreen(window.handle,(0,0))
+                  x1,y1,x2,y2=(round(v*coords[4]) for v in coords[:4])
+                  return ImageGrab.grab((origin[0]+x1,origin[1]+y1,origin[0]+x2,origin[1]+y2)).convert("RGB")
+              def delta(a,b):
+                  return sum(ImageStat.Stat(ImageChops.difference(a,b)).mean)/3
+              def changed(base, threshold):
+                  for _ in range(50):
+                      current=frame()
+                      d=delta(base,current)
+                      if d>threshold: return current,d
+                      time.sleep(.15)
+                  raise AssertionError(f"Native preview pixels did not change: {d:.4f}")
+              def recovered(base,tolerance):
+                  for _ in range(50):
+                      d=delta(base,frame())
+                      if d<tolerance:return d
+                      time.sleep(.15)
+                  raise AssertionError(f"Native pixels did not return to baseline: {d:.4f}")
+              time.sleep(1)
+              natural=frame()
+              assert max(ImageStat.Stat(natural).stddev)>10,"Captured stage has no visual detail"
+              time.sleep(.3)
+              residual=delta(natural,frame())
+              assert residual<1.0,("unstable paused frame",residual)
+              js("document.querySelectorAll('[data-do=grade]')[2].click()")
+              wait("grade==='Cinematic' && !running")
+              graded,grade_delta=changed(natural,max(1.2,residual*4))
+              js("document.querySelectorAll('[data-do=grade]')[0].click()")
+              recovered(natural,max(.8,residual*2))
+              js("const b=document.getElementById('blur');b.value=90;b.dispatchEvent(new Event('input',{bubbles:true}))")
+              wait("blur===90 && !running")
+              blurred,blur_delta=changed(natural,max(.15,residual*3))
+              click("blurToggle")
+              recovered(natural,max(.8,residual*2))
+              print("PASS native preview frames at paused 1800ms; mean absolute RGB change:",
+                    "grade",round(grade_delta,3),"blur",round(blur_delta,3),"baseline jitter",round(residual,3),flush=True)
           finally:
               proc.terminate()
-          
           '@ | Set-Content -Encoding utf8 ui_probe.py
           python ui_probe.py
