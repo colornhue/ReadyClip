@@ -100,23 +100,24 @@ jobs:
               wait("page === 'import' && !busy && files.length === 0")
               print("PASS native file picker cancel, empty editor retained",flush=True)
               dialog = open_picker()
-              def accept_dialog(dialog, selected):
+              def accept_dialog(dialog, selected=None):
                   edit=dialog.child_window(class_name="ComboBoxEx32",found_index=0).child_window(class_name="Edit",found_index=0)
-                  edit.wait("ready",timeout=15)
+                  if selected is not None:
+                      edit.wait("ready",timeout=15)
                   button=dialog.child_window(control_id=1,class_name="Button")
                   hwnd=dialog.handle
                   # The Shell can still restore its default folder after the
                   # native dialog appears. Submit IDOK after the filename is ready.
                   time.sleep(1)
                   for attempt in range(6):
-                      if attempt == 0 or edit.window_text() != str(selected):
+                      if selected is not None and (attempt == 0 or edit.window_text() != str(selected)):
                           edit.set_edit_text(str(selected))
                       win32gui.PostMessage(hwnd,0x0111,1,button.handle)
                       for _ in range(12):
                           if not win32gui.IsWindowVisible(hwnd):
                               return
                           time.sleep(.2)
-                  raise AssertionError(f"Native dialog did not accept {selected}: {edit.window_text()}")
+                  raise AssertionError(f"Native dialog did not accept {selected}")
               accept_dialog(dialog,fixture)
               print("Native picker closed",flush=True)
               wait("document.body.innerText.includes('qa-ride.mp4')")
@@ -137,9 +138,7 @@ jobs:
                   js("setTimeout(()=>document.querySelector('[data-do=next]').click(),0)")
                   folder=Desktop(backend="win32").window(title="Save reels to a folder",class_name="#32770")
                   folder.wait("visible",timeout=30)
-                  destination=pathlib.Path(label).resolve()
-                  destination.mkdir(exist_ok=True)
-                  accept_dialog(folder,destination)
+                  accept_dialog(folder)
                   wait("page === 'done' && outputs.length > 0")
                   output=pathlib.Path(js("outputs[0]"))
                   assert output.is_file()
