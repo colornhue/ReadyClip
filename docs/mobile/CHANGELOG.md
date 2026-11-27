@@ -8,11 +8,15 @@ The current Android and iOS development projects declare version `0.1.0`. The en
 
 ### Added
 
-- Import footage from Photos or Files, detect audio highlights, review the chosen time ranges and assemble a reel. Randomize offers another selection of shots.
+- Import footage from Photos or Files, detect audio highlights, review the chosen time ranges and assemble a reel. Randomize builds a reel with a target length from one to four minutes. On Android, remove individual shots and review the updated duration and preview.
 - Choose Racing Blue, Alpine Cyan, Factory Orange or Stealth in settings.
 - Save exported video or open the system share sheet.
 - **Android test build** — Copy a complete supported MP4 byte for byte, or trim compatible SDR AVC/HEVC footage at independently decodable keyframes. ReadyClip asks before moving a cut to a nearby keyframe and verifies the output before saving.
 - **iOS test source** — Preview and export through AVFoundation. The lossless exporter checks sample bytes, timing and format compatibility. Xcode and iPhone validation are pending.
+
+### Changed
+
+- **Android test build** — Faster audio analysis for long recordings. An emulator test reduced analysis time from 3:17 to 1:46 for the same 31-minute clip and preserved the detected highlight boundaries.
 
 ### Known limitations
 
