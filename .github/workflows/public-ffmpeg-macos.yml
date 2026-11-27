@@ -1,0 +1,69 @@
+name: Public FFmpeg macOS builds
+on:
+  push:
+    branches: [qa/public-ffmpeg-9.1-macos]
+    paths: [.github/workflows/public-ffmpeg-macos.yml]
+permissions:
+  contents: read
+jobs:
+  ffmpeg:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            arch: x86_64
+            platform: osx-64
+          - runner: macos-15
+            arch: arm64
+            platform: osx-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 100
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '12.0'
+    steps:
+      - name: Build upstream GPL FFmpeg with public dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "${{ matrix.arch }}"
+          work="$RUNNER_TEMP/media-build"
+          mkdir -p "$work"
+          cd "$work"
+          curl -fsSL --retry 3 "https://micro.mamba.pm/api/micromamba/${{ matrix.platform }}/latest" -o mamba.tbz2
+          tar -xjf mamba.tbz2 bin/micromamba
+          export MAMBA_ROOT_PREFIX="$work/mamba"
+          "$work/bin/micromamba" create -y -p "$work/deps" --override-channels -c conda-forge 'x264=1!164.3095' 'x265=3.5' 'zimg=3.0.6' pkg-config nasm
+          curl -fsSL --retry 3 https://ffmpeg.org/releases/ffmpeg-9.1.tar.xz -o ffmpeg-9.1.tar.xz
+          echo '1a4d394ae63d190a526cd052eb4415c156b5c5e2df37efab41a7de0b8fde2433  ffmpeg-9.1.tar.xz' | shasum -a 256 -c -
+          tar -xf ffmpeg-9.1.tar.xz
+          cd ffmpeg-9.1
+          export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+          export PATH="$work/deps/bin:$PATH"
+          export PKG_CONFIG_PATH="$work/deps/lib/pkgconfig"
+          prefix="$work/runtime"
+          ./configure --prefix="$prefix" --install-name-dir=@rpath --disable-static --enable-shared --disable-autodetect --disable-debug --enable-gpl --enable-libx264 --enable-libx265 --enable-libzimg --enable-zlib --enable-videotoolbox --disable-ffplay --disable-doc --cc="$(xcrun --find clang)" --extra-cflags="-I$work/deps/include" --extra-ldflags="-L$work/deps/lib -Wl,-rpath,@loader_path/../lib"
+          make -j"$(sysctl -n hw.logicalcpu)" > "$work/make.log" 2>&1 || { tail -100 "$work/make.log"; exit 1; }
+          make install > "$work/install.log"
+          for lib in "$work"/deps/lib/libx264*.dylib "$work"/deps/lib/libx265*.dylib "$work"/deps/lib/libzimg*.dylib "$work"/deps/lib/libc++*.dylib; do
+            if [[ -e "$lib" ]]; then cp -a "$lib" "$prefix/lib/"; fi
+          done
+          mkdir -p "$prefix/licenses"
+          cp COPYING* LICENSE.md "$prefix/licenses/"
+          if [[ -d "$work/deps/share/licenses" ]]; then cp -a "$work/deps/share/licenses" "$prefix/licenses/dependencies"; fi
+          "$prefix/bin/ffmpeg" -version
+          "$prefix/bin/ffprobe" -version
+          "$prefix/bin/ffmpeg" -hide_banner -filters > "$work/filters"
+          grep -w zscale "$work/filters"
+          "$prefix/bin/ffmpeg" -v error -f lavfi -i testsrc2=s=64x64:r=2 -t 1 -c:v libx265 -x265-params lossless=1:log-level=error -tag:v hvc1 "$work/test.mp4"
+          test "$("$prefix/bin/ffprobe" -v error -show_entries stream=codec_name -of default=nw=1:nk=1 "$work/test.mp4")" = hevc
+          archive="ffmpeg-9.1-macos-12-${{ matrix.arch }}.tar.gz"
+          tar -C "$prefix" -czf "$GITHUB_WORKSPACE/$archive" bin lib licenses
+          cd "$GITHUB_WORKSPACE"
+          shasum -a 256 "$archive"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-9.1-macos-12-${{ matrix.arch }}
+          path: '*.tar.gz'
+          retention-days: 2
+          compression-level: 0
