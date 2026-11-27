@@ -100,27 +100,24 @@ jobs:
               wait("page === 'import' && !busy && files.length === 0")
               print("PASS native file picker cancel, empty editor retained",flush=True)
               dialog = open_picker()
-              combo = dialog.child_window(class_name="ComboBoxEx32",found_index=0)
-              name_edit = combo.child_window(class_name="Edit",found_index=0)
-              name_edit.wait("ready",timeout=15)
-              open_button=dialog.child_window(control_id=1,class_name="Button")
-              picker_handle=dialog.handle
-              # Shell initialization can restore its last-used folder after the
-              # window becomes visible. Wait for the native editor, then submit
-              # its IDOK command directly on the interactive CI desktop.
-              time.sleep(1.0)
-              for attempt in range(6):
-                  name_edit.set_edit_text(str(fixture))
-                  assert name_edit.window_text() == str(fixture)
-                  win32gui.PostMessage(picker_handle, 0x0111, 1, open_button.handle)
-                  for _ in range(12):
-                      if not win32gui.IsWindowVisible(picker_handle):
-                          break
-                      time.sleep(.2)
-                  else:
-                      continue
-                  break
-              assert not win32gui.IsWindowVisible(picker_handle), "File picker did not accept path"
+              def accept_dialog(dialog, selected):
+                  edit=dialog.child_window(class_name="ComboBoxEx32",found_index=0).child_window(class_name="Edit",found_index=0)
+                  edit.wait("ready",timeout=15)
+                  button=dialog.child_window(control_id=1,class_name="Button")
+                  hwnd=dialog.handle
+                  # The Shell can still restore its default folder after the
+                  # native dialog appears. Submit IDOK after the filename is ready.
+                  time.sleep(1)
+                  for attempt in range(6):
+                      if attempt == 0 or edit.window_text() != str(selected):
+                          edit.set_edit_text(str(selected))
+                      win32gui.PostMessage(hwnd,0x0111,1,button.handle)
+                      for _ in range(12):
+                          if not win32gui.IsWindowVisible(hwnd):
+                              return
+                          time.sleep(.2)
+                  raise AssertionError(f"Native dialog did not accept {selected}: {edit.window_text()}")
+              accept_dialog(dialog,fixture)
               print("Native picker closed",flush=True)
               wait("document.body.innerText.includes('qa-ride.mp4')")
               wait("!!document.querySelector('[data-do=next]:enabled') && !busy")
@@ -140,8 +137,9 @@ jobs:
                   js("setTimeout(()=>document.querySelector('[data-do=next]').click(),0)")
                   folder=Desktop(backend="win32").window(title="Save reels to a folder",class_name="#32770")
                   folder.wait("visible",timeout=30)
-                  folder.child_window(control_id=1,class_name="Button").click()
-                  folder.wait_not("visible",timeout=30)
+                  destination=pathlib.Path(label).resolve()
+                  destination.mkdir(exist_ok=True)
+                  accept_dialog(folder,destination)
                   wait("page === 'done' && outputs.length > 0")
                   output=pathlib.Path(js("outputs[0]"))
                   assert output.is_file()
