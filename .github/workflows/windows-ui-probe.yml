@@ -144,7 +144,26 @@ jobs:
                   assert output.is_file()
                   streams=json.loads(subprocess.check_output([probe,"-v","error","-show_streams","-of","json",str(output)]))["streams"]
                   assert {"video","audio"}.issubset({s["codec_type"] for s in streams}), streams
-                  subprocess.run([ff,"-v","error","-xerror","-i",str(output),"-f","null","-"],check=True)
+                  def timestamps(mode, field):
+                      records=json.loads(subprocess.check_output([probe,"-v","error","-select_streams","v:0",
+                          "-show_"+mode,"-show_entries",mode[:-1]+"="+field,"-of","json",str(output)]))[mode]
+                      return [int(item[field]) for item in records if field in item]
+                  packet_dts=timestamps("packets","dts")
+                  frame_pts=timestamps("frames","best_effort_timestamp")
+                  def steps(values):
+                      return [b-a for a,b in zip(values,values[1:])]
+                  tick=next(s["time_base"] for s in streams if s["codec_type"]=="video")
+                  assert len(packet_dts)>10 and len(frame_pts)>10
+                  print(label,"video clock",tick,"packets",len(packet_dts),"frames",len(frame_pts),
+                        "minimum packet DTS / displayed PTS step",min(steps(packet_dts)),min(steps(frame_pts)),flush=True)
+                  assert min(steps(packet_dts))>0 and min(steps(frame_pts))>0, "Non-monotonic timestamps in export"
+                  # Keep the export's native tick size for VFR joins. The null
+                  # sink's default frame-rate clock can round distinct frames
+                  # to the same tick when a cut falls between nominal frames.
+                  decoded=subprocess.run([ff,"-v","error","-xerror","-i",str(output),"-map","0:v:0","-map","0:a:0",
+                      "-fps_mode:v","passthrough","-enc_time_base:v","demux","-f","null","-"],
+                      capture_output=True,text=True,check=True)
+                  assert not decoded.stderr.strip(),decoded.stderr
                   elapsed=0
                   observed=[]
                   expected=[]
