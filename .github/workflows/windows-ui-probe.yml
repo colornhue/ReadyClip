@@ -64,7 +64,7 @@ jobs:
                       if js(expression):
                           return
                       time.sleep(.33)
-                  raise RuntimeError("Timed out waiting for " + expression)
+                  raise RuntimeError("Timed out waiting for " + expression + " / " + str(js("document.body.innerText"))[-1800:])
               wait("!!document.querySelector('[data-do=add]')")
               for width in (320,390,799,800,1024,1920):
                   send("Emulation.setDeviceMetricsOverride", {"width":width,"height":850,"deviceScaleFactor":1,"mobile":False})
@@ -78,7 +78,8 @@ jobs:
               dialog.child_window(class_name="Edit",found_index=0).set_edit_text(str(fixture))
               dialog.child_window(control_id=1,class_name="Button").click()
               wait("document.body.innerText.includes('qa-ride.mp4')")
-              js("api.analyze(3,0,0)")
+              wait("!!document.querySelector('[data-do=next]:enabled') && !busy")
+              js("document.querySelector('[data-do=next]').click()")
               wait("!!document.querySelector('#shots .shot-row')")
               print("Passed six Windows viewport widths, native file picker, import and highlight review")
           finally:
