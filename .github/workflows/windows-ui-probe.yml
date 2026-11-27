@@ -17,7 +17,7 @@ jobs:
           curl.exe -fsSL --retry 3 -o ReadyClip.zip https://github.com/colornhue/ReadyClip/releases/download/v0.5.3-beta/ReadyClip-0.5.3-beta-Windows-x64.zip
           if ((Get-FileHash ReadyClip.zip).Hash -ne '547dbc6f8f2afb30706282058672d7cbf71c4dffacff49810bf6c921b215695c') { throw 'Unexpected release digest' }
           tar -xf ReadyClip.zip
-          python -m pip install --quiet playwright pywinauto
+          python -m pip install --quiet websocket-client pywinauto
           @'
           import os
           import pathlib
@@ -25,7 +25,8 @@ jobs:
           import time
           import urllib.request
           
-          from playwright.sync_api import sync_playwright
+          import json
+          import websocket
           from pywinauto import Desktop
           
           root = pathlib.Path("App").resolve()
@@ -40,26 +41,46 @@ jobs:
                       break
                   except OSError:
                       time.sleep(0.5)
-              with sync_playwright() as driver:
-                  browser = driver.chromium.connect_over_cdp("http://127.0.0.1:9223")
-                  page = browser.contexts[0].pages[0]
-                  page.locator('[data-do="add"]').wait_for(timeout=60000)
-                  session = page.context.new_cdp_session(page)
-                  for width in (320, 390, 799, 800, 1024, 1920):
-                      session.send("Emulation.setDeviceMetricsOverride", {"width": width, "height": 850, "deviceScaleFactor": 1, "mobile": False})
-                      page.wait_for_timeout(120)
-                      assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), width
-                  session.send("Emulation.clearDeviceMetricsOverride")
-                  page.locator('[data-do="add"]').click()
-                  page.locator('[data-do="files"]').click(no_wait_after=True)
-                  dialog = Desktop(backend="win32").window(title="Add footage", class_name="#32770")
-                  dialog.wait("visible",timeout=30)
-                  dialog.child_window(class_name="Edit",found_index=0).set_edit_text(str(fixture))
-                  dialog.child_window(control_id=1,class_name="Button").click()
-                  page.get_by_text(fixture.name,exact=True).first.wait_for(timeout=45000)
-                  page.evaluate("api.analyze(3,0,0)")
-                  page.locator("#shots .shot-row").first.wait_for(timeout=60000)
-                  print("Passed six Windows viewport widths, native file picker, import, thumbnail and highlight review")
+              target = next(p for p in json.load(urllib.request.urlopen("http://127.0.0.1:9223/json/list")) if p["type"] == "page")
+              ws = websocket.create_connection(target["webSocketDebuggerUrl"], suppress_origin=True, timeout=10)
+              seq = 0
+              def send(method, params):
+                  global seq
+                  seq += 1
+                  ws.send(json.dumps({"id": seq, "method": method, "params": params}))
+                  while True:
+                      message = json.loads(ws.recv())
+                      if message.get("id") == seq:
+                          if "error" in message:
+                              raise RuntimeError(message["error"])
+                          return message["result"]
+              def js(expression):
+                  result = send("Runtime.evaluate", {"expression": expression, "returnByValue": True})
+                  if "exceptionDetails" in result:
+                      raise RuntimeError(result["exceptionDetails"])
+                  return result["result"].get("value")
+              def wait(expression):
+                  for attempt in range(180):
+                      if js(expression):
+                          return
+                      time.sleep(.33)
+                  raise RuntimeError("Timed out waiting for " + expression)
+              wait("!!document.querySelector('[data-do=add]')")
+              for width in (320,390,799,800,1024,1920):
+                  send("Emulation.setDeviceMetricsOverride", {"width":width,"height":850,"deviceScaleFactor":1,"mobile":False})
+                  time.sleep(.2)
+                  assert js("document.documentElement.scrollWidth <= innerWidth"), width
+              send("Emulation.clearDeviceMetricsOverride", {})
+              js("document.querySelector('[data-do=add]').click()")
+              js("setTimeout(()=>document.querySelector('[data-do=files]').click(),0)")
+              dialog = Desktop(backend="win32").window(title="Add footage", class_name="#32770")
+              dialog.wait("visible",timeout=30)
+              dialog.child_window(class_name="Edit",found_index=0).set_edit_text(str(fixture))
+              dialog.child_window(control_id=1,class_name="Button").click()
+              wait("document.body.innerText.includes('qa-ride.mp4')")
+              js("api.analyze(3,0,0)")
+              wait("!!document.querySelector('#shots .shot-row')")
+              print("Passed six Windows viewport widths, native file picker, import and highlight review")
           finally:
               proc.terminate()
           
