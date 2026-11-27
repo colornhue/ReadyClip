@@ -31,6 +31,17 @@ jobs:
           fi
           test -n "$url"
           sed -i "s|href=\"$asset\"|href=\"$url\"|" dist/index.html
+      - name: Prefer the verified portable build when published
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          portable=ReadyClip-0.5.3-beta-Windows-x64.zip
+          digest=547dbc6f8f2afb30706282058672d7cbf71c4dffacff49810bf6c921b215695c
+          if ! release=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.5.3-beta" 2>/dev/null); then exit 0; fi
+          url=$(jq -r --arg file "$portable" --arg hash "sha256:$digest" '.assets[] | select(.name == $file and .digest == $hash) | .browser_download_url' <<< "$release")
+          if [ -n "$url" ]; then
+            sed -Ei "s|class=\"cta\" href=\"[^\"]+\"|class=\"cta\" href=\"$url\"|; s|Windows x64 · Beta [^<]+|Windows x64 · Beta 0.5.3 · 420 MB ZIP · Extract and open App/ReadyClip.exe|; s|ReadyClip-0\.5\.[12]-beta-x64\.msi</code>|$portable</code>|; s|<code>[[:xdigit:]]{64}</code>|<code>$digest</code>|" dist/index.html
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
