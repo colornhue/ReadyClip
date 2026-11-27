@@ -17,6 +17,8 @@ The current Android and iOS development projects declare version `0.1.0`. The en
 ### Changed
 
 - **Android test build** — Faster audio analysis for long recordings. An emulator test reduced analysis time from 3:17 to 1:46 for the same 31-minute clip and preserved the detected highlight boundaries.
+- **Android and iOS development builds** — Preview generation and export report progress. Preview controls include Warm, Cool and Trail grades and a blur range of 0–99. The Android emulator kept playing while blur was adjusted. On-device progress display remains unverified.
+- **Android development build** — Previews use 720p H.264 with sound enabled by default. The build also introduced a dark Racing Blue launcher icon. Audible preview playback remains unverified.
 
 ### Known limitations
 
