@@ -42,7 +42,7 @@ jobs:
                   except OSError:
                       time.sleep(0.5)
               target = next(p for p in json.load(urllib.request.urlopen("http://127.0.0.1:9223/json/list")) if p["type"] == "page")
-              ws = websocket.create_connection(target["webSocketDebuggerUrl"], suppress_origin=True, timeout=10)
+              ws = websocket.create_connection(target["webSocketDebuggerUrl"], suppress_origin=True, timeout=50)
               seq = 0
               def send(method, params):
                   global seq
@@ -71,12 +71,19 @@ jobs:
                   time.sleep(.2)
                   assert js("document.documentElement.scrollWidth <= innerWidth"), width
               send("Emulation.clearDeviceMetricsOverride", {})
+              print("All six viewport checks passed",flush=True)
               js("document.querySelector('[data-do=add]').click()")
               js("setTimeout(()=>document.querySelector('[data-do=files]').click(),0)")
               dialog = Desktop(backend="win32").window(title="Add footage", class_name="#32770")
               dialog.wait("visible",timeout=30)
-              dialog.child_window(class_name="Edit",found_index=0).set_edit_text(str(fixture))
+              combo = dialog.child_window(class_name="ComboBoxEx32",found_index=0)
+              name_edit = combo.child_window(class_name="Edit",found_index=0)
+              name_edit.set_edit_text(str(fixture))
+              assert name_edit.window_text() == str(fixture)
+              print("Native picker filename entered",flush=True)
               dialog.child_window(control_id=1,class_name="Button").click()
+              dialog.wait_not("visible",timeout=25)
+              print("Native picker closed",flush=True)
               wait("document.body.innerText.includes('qa-ride.mp4')")
               wait("!!document.querySelector('[data-do=next]:enabled') && !busy")
               js("document.querySelector('[data-do=next]').click()")
