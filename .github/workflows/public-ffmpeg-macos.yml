@@ -42,7 +42,7 @@ jobs:
           export PATH="$work/deps/bin:$PATH"
           export PKG_CONFIG_PATH="$work/deps/lib/pkgconfig"
           prefix="$work/runtime"
-          ./configure --prefix="$prefix" --install-name-dir=@rpath --disable-static --enable-shared --disable-autodetect --disable-debug --enable-gpl --enable-libx264 --enable-libx265 --enable-libzimg --enable-zlib --enable-videotoolbox --disable-ffplay --disable-doc --cc="$(xcrun --find clang)" --extra-cflags="-I$work/deps/include" --extra-ldflags="-L$work/deps/lib -Wl,-rpath,@loader_path/../lib"
+          ./configure --prefix="$prefix" --install-name-dir=@rpath --disable-static --enable-shared --disable-autodetect --disable-debug --enable-gpl --enable-libx264 --enable-libx265 --enable-libzimg --enable-zlib --enable-videotoolbox --disable-ffplay --disable-doc --cc="$(xcrun --find clang)" --extra-cflags="-I$work/deps/include" --extra-ldflags="-L$work/deps/lib -Wl,-headerpad_max_install_names -Wl,-rpath,@loader_path/../lib"
           make -j"$(sysctl -n hw.logicalcpu)" > "$work/make.log" 2>&1 || { tail -100 "$work/make.log"; exit 1; }
           make install > "$work/install.log"
           for lib in "$work"/deps/lib/libx264*.dylib "$work"/deps/lib/libx265*.dylib "$work"/deps/lib/libzimg*.dylib "$work"/deps/lib/libc++*.dylib; do
@@ -51,6 +51,12 @@ jobs:
           mkdir -p "$prefix/licenses"
           cp COPYING* LICENSE.md "$prefix/licenses/"
           if [[ -d "$work/deps/share/licenses" ]]; then cp -a "$work/deps/share/licenses" "$prefix/licenses/dependencies"; fi
+          cp "$prefix/bin/ffmpeg" "$work/relocation-test"
+          while read -r dep; do
+            file="$(basename "$dep")"
+            linked="$(python3 -c 'import os,sys;print(os.path.basename(os.path.realpath(sys.argv[1])))' "$prefix/lib/$file")"
+            /usr/bin/install_name_tool -change "$dep" "@loader_path/../lib/$linked" "$work/relocation-test"
+          done < <(otool -L "$prefix/bin/ffmpeg" | awk '$1 ~ /^@rpath\// {print $1}')
           "$prefix/bin/ffmpeg" -version
           "$prefix/bin/ffprobe" -version
           "$prefix/bin/ffmpeg" -hide_banner -filters > "$work/filters"
