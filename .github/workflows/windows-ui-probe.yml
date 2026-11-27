@@ -89,6 +89,21 @@ jobs:
               js("document.querySelector('[data-do=next]').click()")
               wait("!!document.querySelector('#shots .shot-row')")
               print("Passed six Windows viewport widths, native file picker, import and highlight review")
+              wait("page === 'review' && !busy")
+              js("document.querySelector('[data-do=next]').click()")
+              wait("page === 'enhance' && !!document.querySelector('[data-do=next]:enabled')")
+              js("setTimeout(()=>document.querySelector('[data-do=next]').click(),0)")
+              folder = Desktop(backend="win32").window(title="Save reels to a folder",class_name="#32770")
+              folder.wait("visible",timeout=30)
+              folder.child_window(control_id=1,class_name="Button").click()
+              folder.wait_not("visible",timeout=30)
+              wait("page === 'done' && outputs.length > 0")
+              result = pathlib.Path(js("outputs[0]"))
+              assert result.is_file()
+              streams = json.loads(subprocess.check_output([str(root/"_internal/ffprobe.exe"),"-v","error","-show_streams","-of","json",str(result)]))["streams"]
+              assert {"video","audio"}.issubset({s["codec_type"] for s in streams}), streams
+              subprocess.run([str(root/"_internal/ffmpeg.exe"),"-v","error","-xerror","-i",str(result),"-f","null","-"],check=True)
+              print("Passed Windows reel export and full video/audio decode.",flush=True)
           finally:
               proc.terminate()
           
