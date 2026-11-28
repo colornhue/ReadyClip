@@ -12,7 +12,8 @@ The current Android and iOS development projects declare version `0.1.0`. The en
 - Choose Racing Blue, Alpine Cyan, Factory Orange or Stealth in settings.
 - Save exported video or open the system share sheet.
 - **Android test build** — Copy a complete supported MP4 byte for byte, or trim compatible SDR AVC/HEVC footage at independently decodable keyframes. ReadyClip asks before moving a cut to a nearby keyframe and verifies the output before saving.
-- **iOS test source** — Preview and export through AVFoundation. The lossless exporter checks sample bytes, timing and format compatibility. App Store Connect received iOS 0.1.0 build 15. Preview, export and saving to Photos still need verification on an iPhone.
+- **iOS test source** — Preview and export through AVFoundation. The lossless exporter checks sample bytes, timing and format compatibility. App Store Connect received iOS 0.1.0 build 15. Physical iPhone verification remains open.
+- **iOS 0.1.0 build 13** — Choose Mono for a black-and-white reel and mute or unmute the preview. On iPhone and iPad simulators, tests confirmed the exported reel was monochrome, appeared in Photos after saving and opened the native share sheet.
 
 ### Changed
 
