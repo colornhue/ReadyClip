@@ -1,0 +1,117 @@
+name: Build public Windows media tools
+on:
+  push:
+    branches: [qa/public-ffmpeg-9.1-windows]
+    paths: [.github/workflows/public-ffmpeg-windows.yml]
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - name: Build FFmpeg 9.1 from pinned public inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y nasm pkg-config zstd
+          work="$RUNNER_TEMP/media"
+          mkdir -p "$work"/{downloads,deps,output,receipts}
+          cd "$work"
+          curl --retry 3 -fLsS 'https://github.com/mstorsjo/llvm-mingw/releases/download/20261117/llvm-mingw-20261117-ucrt-ubuntu-22.04-x86_64.tar.xz' -o downloads/toolchain.tar.xz
+          echo 'e7a15a49a2ea95e9f3d8a9d0cfabe5052a4b10fb4777cc54de5a8c27b64bb701  downloads/toolchain.tar.xz' | sha256sum -c -
+          mkdir toolchain
+          tar -xf downloads/toolchain.tar.xz -C toolchain --strip-components=1
+          curl --retry 3 -fLsS https://ffmpeg.org/releases/ffmpeg-9.1.tar.xz -o downloads/ffmpeg-9.1.tar.xz
+          echo '1a4d394ae63d190a526cd052eb4415c156b5c5e2df37efab41a7de0b8fde2433  downloads/ffmpeg-9.1.tar.xz' | sha256sum -c -
+          tar -xf downloads/ffmpeg-9.1.tar.xz
+          cat > receipts/dependencies.sha256 <<'PINS'
+          fc9e6ef0e78c476540ef231dccde2fad3ee1c1673498c133b7c13ff63c33f524  mingw-w64-ucrt-x86_64-amf-headers-1.5.3-1-any.pkg.tar.zst
+          9c52b6d0beb6f1b82107be11d7f98be5b8132b00c787949eba59d5cddc415b84  mingw-w64-ucrt-x86_64-dav1d-1.5.5-1-any.pkg.tar.zst
+          e0bc995b1be487c6288b4d780d3c7e5325d476c8a6c4932ee0210f9177c3f493  mingw-w64-ucrt-x86_64-ffnvcodec-headers-13.0.19.0-1-any.pkg.tar.zst
+          bc0ae31c582e0847964b4c8c4b55bb2404a9b7ddce7ebf0b176b6693b76e0c62  mingw-w64-ucrt-x86_64-libgcc-16.2.0-7-any.pkg.tar.zst
+          4dd4b216b0e92ffa160127dd50620372609e98cb219ff1c5dcb9b3fbfe153253  mingw-w64-ucrt-x86_64-libstdc++-16.2.0-7-any.pkg.tar.zst
+          ae9c80f22fa62e533fbef09d4650e1152588e905b9a42b8f7ae4a2c12c27ae77  mingw-w64-ucrt-x86_64-libvpl-2.17.0-1-any.pkg.tar.zst
+          c35d6be83d141c8cfbb61f1637dd4b53aac8f5562d766aa26d0741c40bad4e4d  mingw-w64-ucrt-x86_64-libwinpthread-14.0.0.r598.ge3d18511f-1-any.pkg.tar.zst
+          10d3817153fc05832643ebc5da9aec940b4ae2d9dadb6643ac3c282985880434  mingw-w64-ucrt-x86_64-libx264-0.165.r3222.b35605a-3-any.pkg.tar.zst
+          40dd235ba4294266ecad0eec661fae7db25dfe9df2ee9a7c3e07b0d079ae2034  mingw-w64-ucrt-x86_64-x265-4.3-1-any.pkg.tar.zst
+          add647f0b898696b7369098a0779e6df4499de20080b6888ada565ac987cef26  mingw-w64-ucrt-x86_64-zimg-3.0.6-3-any.pkg.tar.zst
+          172541cf5e2391a402f092104988699b0163129d22be1d6b4b201bfb84af6fcf  mingw-w64-ucrt-x86_64-zlib-1.4-2-any.pkg.tar.zst
+          PINS
+          while read -r checksum archive; do
+            curl --retry 3 -fLsS "https://repo.msys2.org/mingw/ucrt64/$archive" -o "downloads/$archive"
+            printf '%s  %s\n' "$checksum" "downloads/$archive" | sha256sum -c -
+            tar --zstd -xf "downloads/$archive" -C deps --exclude='.MTREE' --exclude='.PKGINFO' --exclude='.BUILDINFO'
+          done < receipts/dependencies.sha256
+          export PATH="$work/toolchain/bin:$PATH"
+          export PKG_CONFIG_LIBDIR="$work/deps/ucrt64/lib/pkgconfig:$work/deps/ucrt64/share/pkgconfig"
+          export PKG_CONFIG_SYSROOT_DIR="$work/deps"
+          for name in x264 x265 zimg vpl dav1d ffnvcodec; do pkg-config --cflags --libs "$name"; done
+          cd ffmpeg-9.1
+          ./configure --enable-cross-compile --target-os=mingw32 --arch=x86_64 --cross-prefix=x86_64-w64-mingw32- --cc=x86_64-w64-mingw32-clang --cxx=x86_64-w64-mingw32-clang++ --pkg-config=pkg-config --disable-autodetect --disable-shared --enable-static --disable-debug --disable-doc --disable-ffplay --enable-gpl --enable-libx264 --enable-libx265 --enable-libzimg --enable-libdav1d --enable-zlib --enable-ffnvcodec --enable-nvenc --enable-amf --enable-libvpl --enable-dxva2 --enable-d3d11va --extra-cflags="-I$work/deps/ucrt64/include" --extra-ldflags="-L$work/deps/ucrt64/lib" 2>&1 | tee "$work/receipts/configure.txt" || { tail -160 ffbuild/config.log; exit 1; }
+          cp ffbuild/config.mak config.h "$work/receipts"
+          make -j"$(nproc)" ffmpeg.exe ffprobe.exe > "$work/make.log" 2>&1 || { tail -120 "$work/make.log"; exit 1; }
+          cp ffmpeg.exe ffprobe.exe "$work/output"
+          cd "$work/output"
+          for app in *.exe; do x86_64-w64-mingw32-strip "$app"; done
+          declare -A checked=()
+          while true; do
+            visited=0
+            for f in *.exe *.dll; do
+              [[ -f "$f" && -z "${checked[$f]:-}" ]] || continue
+              checked[$f]=1
+              visited=1
+              x86_64-w64-mingw32-objdump -p "$f" > "$work/receipts/$f.imports"
+              while read -r dep; do
+                found="$(find "$work/deps/ucrt64/bin" -iname "$dep" -print -quit)"
+                if [[ -f "$found" && ! -f "$(basename "$found")" ]]; then cp "$found" .; fi
+              done < <(awk '/DLL Name:/{print $3}' "$work/receipts/$f.imports")
+            done
+            [[ "$visited" -gt 0 ]] || break
+          done
+          sha256sum *.dll *.exe > "$work/receipts/runtime.sha256"
+          cat "$work/receipts/runtime.sha256"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-media-tools
+          path: ${{ runner.temp }}/media/output
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-media-receipts
+          path: ${{ runner.temp }}/media/receipts
+          retention-days: 14
+  native-smoke:
+    runs-on: windows-2025
+    needs: compile
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: windows-media-tools
+          path: media
+      - name: Decode, grade and encode on Windows x64
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-Location media
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $encoders = (.\ffmpeg.exe -hide_banner -encoders) -join "`n"
+          foreach ($name in 'libx264','libx265','ffv1','aac','h264_nvenc','h264_amf','h264_qsv') { if ($encoders -notmatch "\b$name\b") { throw "Missing encoder $name" } }
+          foreach ($crf in 28,17) {
+            .\ffmpeg.exe -v error -f lavfi -i testsrc2=s=320x180:r=24 -f lavfi -i sine=f=440:r=48000 -t 1 -vf "zscale=w=160:h=90,tmix=frames=2" -c:v libx265 -crf $crf -tag:v hvc1 -c:a aac "grade-$crf.mp4"
+            if ($LASTEXITCODE) { throw "HEVC encode failed for CRF $crf" }
+          }
+          .\ffmpeg.exe -v error -f lavfi -i testsrc2=s=160x90:r=24 -t 1 -vf format=yuv420p10le -c:v libx265 -x265-params lossless=1:log-level=error -pix_fmt yuv420p10le -color_primaries bt2020 -color_trc smpte2084 -colorspace bt2020nc -tag:v hvc1 hdr.mp4
+          if ($LASTEXITCODE) { throw '10-bit lossless encode failed' }
+          foreach ($file in 'grade-28.mp4','grade-17.mp4','hdr.mp4') {
+            $info = (.\ffprobe.exe -v error -show_streams -of json $file) | ConvertFrom-Json
+            if ($LASTEXITCODE -or $info.streams[0].nb_frames -ne '24' -or $info.streams[0].codec_name -ne 'hevc') { throw "bad frames/codec: $file" }
+            if ($file -eq 'hdr.mp4' -and $info.streams[0].pix_fmt -ne 'yuv420p10le') { throw 'bad 10-bit format' }
+            if ($file -ne 'hdr.mp4' -and $info.streams[1].codec_name -ne 'aac') { throw 'missing AAC' }
+            .\ffmpeg.exe -v error -xerror -i $file -f null -
+            if ($LASTEXITCODE) { throw "full decode failed: $file" }
+            Write-Host "$file 24 HEVC frames fully decoded ($((Get-Item $file).Length) bytes)"
+          }
+          if ((Get-Item grade-17.mp4).Length -le (Get-Item grade-28.mp4).Length) { throw 'quality ordering failed' }
