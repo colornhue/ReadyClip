@@ -53,6 +53,7 @@ h1 span { display:block; color:#527cde }
 .hero-photo picture img { object-fit: cover; object-position: center 52% }
 .hero-photo::after { content: ""; position: absolute; inset: 52% 0 0; z-index: 0; pointer-events: none; background: linear-gradient(transparent, rgb(11 16 17 / .45)) }
 .film-trigger { position: absolute; z-index: 1; bottom: 1.5rem; left: 1.55rem; display: inline-flex; align-items: center; gap: .7rem; color: #fff; font-weight: 750; line-height: 1.15; text-decoration: none }
+.film-trigger-mobile { display:none }
 .film-trigger small { display:block; margin-top: .22rem; color:#fff; font-size:.77rem; font-variant-numeric:tabular-nums; font-weight: 540 }
 .play-circle { display:grid; place-items:center; width:3rem; height:3rem; border-radius:50%; background:var(--paper); color:var(--ink); transition:background .15s,transform .15s }
 .play-circle svg { width:1.45rem; height:1.45rem }
@@ -134,7 +135,10 @@ dialog video { display:block; background:#111; width:min(24rem,calc(100vw - 3.5r
   .download-link { margin-top:1.05rem }
   .hero-photo { min-height:0; aspect-ratio:1.27 }
   .hero-photo picture img { object-position:center 67% }
-  .film-trigger { left:1rem; bottom:1.05rem }
+  .hero-photo .film-trigger { display:none }
+  .film-trigger-mobile { position:static; display:flex; width:fit-content; margin-top:.9rem; color:var(--ink) }
+  .film-trigger-mobile .play-circle { background:var(--ink); color:var(--paper); width:2.75rem; height:2.75rem }
+  .film-trigger-mobile small { color:var(--muted) }
   .proof-inner { grid-template-columns:1fr; gap:1.1rem }
   .proof-trace { padding-left:0; border-left:0; padding-top:.65rem; border-top:1px solid var(--line) }
   .proof-trace img { height:2.4rem }
