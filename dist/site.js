@@ -23,14 +23,6 @@ for (const link of document.querySelectorAll("[data-film]")) {
     document.querySelector("#player-heading").textContent = link.dataset.title;
     player.setAttribute("aria-label", link.dataset.title);
     player.poster = link.dataset.poster;
-    if (link.dataset.captions) {
-      const captions = document.createElement("track");
-      captions.kind = "captions";
-      captions.label = "English";
-      captions.srclang = "en";
-      captions.src = link.dataset.captions;
-      player.append(captions);
-    }
     player.src = link.href;
     dialog.showModal();
     player.play().catch(() => {}); // Native controls also work when autoplay is restricted.
@@ -46,7 +38,6 @@ dialog.addEventListener("close", () => {
   if (dialog.open) return;
   player.pause();
   player.removeAttribute("src");
-  player.querySelector("track")?.remove();
   player.load();
   opener?.focus({preventScroll:true});
 });
