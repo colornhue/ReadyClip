@@ -4,6 +4,8 @@ ReadyClip turns action-camera footage into highlight reels on your Windows PC. I
 
 ## Windows beta
 
-The first beta targets 64-bit Windows. ReadyClip can export a lossless video master, use automatic hardware encoding with CPU fallback, and create optional four-minute clips.
+Download the portable ZIP for Windows x64, extract the full archive, and open `App/ReadyClip.exe`. ReadyClip offers Compact MP4, High Quality HEVC, and a lossless video master.
 
-The Windows installer will be available under [Releases](https://github.com/colornhue/ReadyClip/releases) when the beta is published.
+The 0.5.4 beta release includes the portable app, SHA-256 checksums, and matching third-party source. [Windows download and release notes](https://github.com/colornhue/ReadyClip/releases/tag/v0.5.4-beta)
+
+[ReadyClip website](https://readyclip.studio/) · [Privacy policy](https://readyclip.studio/privacy.html)
